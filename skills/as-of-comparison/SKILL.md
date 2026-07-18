@@ -18,8 +18,10 @@ pace look artificially strong). It is gated behind GM approval, and the
 approval is handled by the system: when you CALL `get_as_of_otb`, execution
 pauses and the GM gets an Approve/Deny card. So **call the tool directly with
 the as-of instant(s) you need — do NOT ask permission in prose first** ("shall
-I proceed?" is redundant with the card and just adds a step). Batch the instants
-you need into as few calls as possible rather than calling repeatedly.
+I proceed?" is redundant with the card and just adds a step). **Decide all the
+instants you need up front and issue them as ONE batch of calls in a single
+turn — one Approve covers the batch.** Sequential one-at-a-time rebuilds cost
+the GM a click and ~30s each; a batch costs one click total.
 
 ## How to brief
 - State both instants explicitly ("as of 1 June 00:00 UTC vs today").

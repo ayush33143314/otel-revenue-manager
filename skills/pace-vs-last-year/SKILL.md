@@ -21,6 +21,14 @@ Reconstruct last year at the SAME point in its booking cycle with
 this tool directly — do not ask "shall I proceed?" in prose first.** The tool is
 gated: calling it pauses execution and shows the GM an Approve/Deny card, which
 IS the approval step. Asking in words first just adds a redundant round-trip.
+
+**Batch every as-of instant into ONE gated request.** If you anticipate wanting
+curve sanity-checks (e.g. the same-lead-time snapshot PLUS an earlier instant or
+two to confirm the fill pattern), issue ALL those get_as_of_otb calls together
+in a single turn — one Approve covers the whole batch. Do NOT run one rebuild,
+look at it, then come back for another instant one gate at a time: each extra
+gate costs the GM a click and ~30 seconds. Decide the instants you need up
+front (same-lead-time is mandatory; one mid-cycle check is usually enough).
 Then:
 - **fill multiplier = last_year_final / last_year_at_that_point** — how much
   last year still grew from here to close.

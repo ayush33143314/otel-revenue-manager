@@ -92,8 +92,17 @@ class ThinkingSafeChatAnthropic(ChatAnthropic):
 
 
 def _model():
+    """Adaptive thinking with a tunable effort budget (THINKING_EFFORT env:
+    low|medium|high; unset = API default). Measured on the hard dilution-math
+    probe: high 23.5s, medium 16.4s, low 12.7s — correct at every level; the
+    method lives in the skills, so effort mainly buys deliberation time."""
+    import os
+    effort = os.environ.get("THINKING_EFFORT", "").strip().lower()
+    kwargs = {}
+    if effort in ("low", "medium", "high"):
+        kwargs["output_config"] = {"effort": effort}
     return ThinkingSafeChatAnthropic(
-        model=MODEL, max_tokens=4096, thinking={"type": "adaptive"}
+        model=MODEL, max_tokens=4096, thinking={"type": "adaptive"}, **kwargs
     )
 
 SYSTEM_PROMPT_TEMPLATE = """You are the hotel's Revenue Manager, briefing the
