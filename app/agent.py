@@ -34,6 +34,7 @@ from deepagents.backends import (
     StateBackend,
     StoreBackend,
 )
+from langchain_anthropic import ChatAnthropic
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.store.memory import InMemoryStore
 
@@ -49,13 +50,51 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 SKILLS_HOST_DIR = ROOT / "skills"     # on-disk skill pack
 SKILLS_VIRTUAL_PATH = "/skills"       # where the agent's backend mounts it
 
-# Passed as a string so deepagents keeps Claude's extended thinking ON — it
-# measurably sharpens the hardest reasoning (forecast math, precise dilution
-# quantification), which is what the challenge grades. Trade-off accepted: the
-# final answer can't token-stream with thinking on (Anthropic rejects replayed
-# thinking blocks in streaming mode), so the server streams tool/skill calls
-# live and delivers the answer as one block. Reasoning quality > answer-typing.
 MODEL = "claude-sonnet-5"
+
+
+class ThinkingSafeChatAnthropic(ChatAnthropic):
+    """Adaptive thinking ON + token streaming, like Claude Code.
+
+    langchain-anthropic (<=1.4.8) has a chunk-aggregation bug: a STREAMED
+    thinking block keeps its signature but loses its `thinking` text, so
+    replaying that history 400s ('thinking.thinking: Field required'). Anthropic
+    accepts tool-use continuations with thinking blocks omitted, so we strip
+    thinking blocks from *input* history on every call. Thinking still runs
+    fresh on each model call (full reasoning quality); we simply don't replay
+    stale thinking text — which streaming had already destroyed."""
+
+    @staticmethod
+    def _strip_thinking(messages):
+        from langchain_core.messages import AIMessage
+        out = []
+        for m in messages:
+            if isinstance(m, AIMessage) and isinstance(m.content, list):
+                content = [b for b in m.content
+                           if not (isinstance(b, dict) and b.get("type") == "thinking")]
+                if len(content) != len(m.content):
+                    m = m.model_copy(update={"content": content})
+            out.append(m)
+        return out
+
+    def _generate(self, messages, *args, **kwargs):
+        return super()._generate(self._strip_thinking(messages), *args, **kwargs)
+
+    def _stream(self, messages, *args, **kwargs):
+        yield from super()._stream(self._strip_thinking(messages), *args, **kwargs)
+
+    async def _agenerate(self, messages, *args, **kwargs):
+        return await super()._agenerate(self._strip_thinking(messages), *args, **kwargs)
+
+    async def _astream(self, messages, *args, **kwargs):
+        async for chunk in super()._astream(self._strip_thinking(messages), *args, **kwargs):
+            yield chunk
+
+
+def _model():
+    return ThinkingSafeChatAnthropic(
+        model=MODEL, max_tokens=4096, thinking={"type": "adaptive"}
+    )
 
 SYSTEM_PROMPT_TEMPLATE = """You are the hotel's Revenue Manager, briefing the
 General Manager. Your job is commercial: help the GM MAKE more money (price to
@@ -174,7 +213,7 @@ def build_agent(checkpointer=None, store=None, today: str | None = None):
         today=today or date.today().isoformat()
     )
     return create_deep_agent(
-        model=MODEL,
+        model=_model(),
         tools=[
             get_otb_summary,
             get_segment_mix,

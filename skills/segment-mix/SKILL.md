@@ -22,6 +22,18 @@ A month is *driven* by its top 2–3 segments by revenue: name them with both
 shares and the revenue figure, and say for each whether it is rate-led or
 volume-led and what that implies commercially.
 
+## Quantify dilution in dollars (don't just say "dilutive")
+When asked how much a segment dilutes — or whenever you flag one as dilutive —
+compute it explicitly, per segment, and sum:
+1. Blended house ADR = denominator_total_revenue ÷ denominator_room_nights.
+2. Segment ADR = segment total_revenue ÷ segment room_nights.
+3. Dilution $ = (blended ADR − segment ADR) × segment room_nights, for each
+   segment whose ADR is below blended (i.e. room-night share > revenue share).
+4. Report each segment's dilution $, the total across all dilutive segments,
+   and that total as a % of the month's revenue.
+State the exact figures (e.g. "SMERF: ($209 − $191) × 68 = ~$1,230; total
+dilutive drag ~$1,800, 4.6% of the month"), not a vague "a bit below rate".
+
 For macro questions ("how much is corporate?"), filter with `macro_group=`
 rather than adding up codes yourself — the tool applies the **stay-date-effective**
 macro group (PROM reclassified Retail → Leisure Group effective 2025-06-01), so
