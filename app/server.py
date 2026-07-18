@@ -134,6 +134,15 @@ def _sse(event: dict) -> str:
     return f"data: {json.dumps(event)}\n\n"
 
 
+# Tools worth an "early chip" the moment the model starts writing the call.
+# read_file/filesystem tools are excluded: their skill-vs-file identity needs
+# the args (path), which only exist at node completion.
+_EARLY_TOOLS = {
+    "get_otb_summary", "get_segment_mix", "get_pickup_delta",
+    "get_as_of_otb", "get_block_vs_transient_mix", "task",
+}
+
+
 def _stream_agent(payload, config):
     """Run the agent, yielding SSE events. Two LangGraph stream modes at once:
     'updates' → tool calls / skill loads / results / interrupt as each node
@@ -142,7 +151,8 @@ def _stream_agent(payload, config):
     replay safety is handled by ThinkingSafeChatAnthropic in app.agent."""
     agent = get_agent()
     final_text = ""
-    seen_tool_calls: set[str] = set()
+    seen_tool_calls: set[str] = set()        # early (streamed) tool_use starts
+    finalized_tool_calls: set[str] = set()   # node-complete emissions (with args)
     try:
         for chunk in agent.stream(payload, config=config,
                                   stream_mode=["updates", "messages"],
@@ -156,13 +166,30 @@ def _stream_agent(payload, config):
                 continue
 
             if mode == "messages":
-                # live answer tokens — top-level assistant text only (ns empty);
-                # thinking blocks carry no 'text' key so only the answer streams
+                # live deltas from the model as it writes (top-level ns only):
+                #   thinking → streamed reasoning (Claude-Code-style visibility)
+                #   tool_use start → early tool chip, the moment the model
+                #     begins writing that call (args follow on node-complete)
+                #   text → answer tokens
                 msg = data[0] if isinstance(data, tuple) else data
                 if not ns and type(msg).__name__ in ("AIMessageChunk", "AIMessage"):
-                    delta = _text_of(getattr(msg, "content", ""))
-                    if delta:
-                        yield _sse({"type": "token", "text": delta})
+                    content = getattr(msg, "content", "")
+                    blocks = content if isinstance(content, list) else []
+                    if isinstance(content, str) and content:
+                        yield _sse({"type": "token", "text": content})
+                    for b in blocks:
+                        if not isinstance(b, dict):
+                            continue
+                        if b.get("type") == "thinking" and b.get("thinking"):
+                            yield _sse({"type": "thinking", "text": b["thinking"]})
+                        elif b.get("type") == "text" and b.get("text"):
+                            yield _sse({"type": "token", "text": b["text"]})
+                        elif (b.get("type") == "tool_use" and b.get("name")
+                              and b.get("id") and b["name"] in _EARLY_TOOLS
+                              and b["id"] not in seen_tool_calls):
+                            seen_tool_calls.add(b["id"])
+                            yield _sse({"type": "tool_call", "id": b["id"],
+                                        "name": b["name"], "args": None})
                 continue
 
             # mode == "updates"
@@ -174,11 +201,11 @@ def _stream_agent(payload, config):
                     return
                 for msg in (out or {}).get("messages", []):
                     for tc in (getattr(msg, "tool_calls", None) or []):
-                        if tc.get("id") in seen_tool_calls:
+                        if tc.get("id") in finalized_tool_calls:
                             continue
-                        seen_tool_calls.add(tc.get("id"))
-                        ev = {"type": "tool_call", "name": tc["name"],
-                              "args": tc["args"]}
+                        finalized_tool_calls.add(tc.get("id"))
+                        ev = {"type": "tool_call", "id": tc.get("id"),
+                              "name": tc["name"], "args": tc["args"]}
                         path = str(tc["args"].get("path", "") or tc["args"].get("file_path", ""))
                         if tc["name"] == "read_file" and "/skills/" in path:
                             ev = {"type": "skill_load",
@@ -215,7 +242,10 @@ def _jsonable(v):
 async def chat(request: Request):
     body = await request.json()
     thread_id = body.get("thread_id") or pysecrets.token_hex(8)
-    config = {"configurable": {"thread_id": thread_id}}
+    # recursion_limit: deep forecasts (multiple gated rebuilds + skills +
+    # subagent rounds) can exceed LangGraph's default of 25 steps — a run
+    # that hits the limit dies mid-analysis (observed at step 25).
+    config = {"configurable": {"thread_id": thread_id}, "recursion_limit": 100}
     payload = {"messages": [{"role": "user", "content": body["message"]}]}
     return StreamingResponse(_stream_agent(payload, config),
                              media_type="text/event-stream",
@@ -243,7 +273,7 @@ def _pending_decision_count(config) -> int:
 @app.post("/api/resume", dependencies=[Depends(check_auth)])
 async def resume(request: Request):
     body = await request.json()
-    config = {"configurable": {"thread_id": body["thread_id"]}}
+    config = {"configurable": {"thread_id": body["thread_id"]}, "recursion_limit": 100}
     decision = body.get("decision", "reject")
     # Apply the GM's one Approve/Deny to every held call in this interrupt.
     n = _pending_decision_count(config)

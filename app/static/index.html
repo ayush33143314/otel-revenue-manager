@@ -100,6 +100,17 @@
   @keyframes pulse { 0%,100% { opacity: .25; transform: scale(.85);} 50% { opacity: 1; transform: scale(1);} }
   @media (prefers-reduced-motion: reduce) { .running i { animation: none; opacity: .7; } }
 
+  /* live reasoning stream */
+  .thinkline { font-size: 12.5px; font-style: italic; color: var(--ink-faint);
+               border-left: 2px solid #2a3a5c; padding: 6px 12px; margin: 8px 0;
+               max-height: 110px; overflow-y: auto; white-space: pre-wrap; }
+  .thinkline.live::after { content: "▍"; color: var(--teal); animation: pulse 1.2s infinite; }
+  .thinkdone { margin: 6px 0; }
+  .thinkdone summary { font-size: 11.5px; color: var(--ink-faint); cursor: pointer; }
+  .thinkdone div { font-size: 12px; font-style: italic; color: var(--ink-faint);
+                   border-left: 2px solid #2a3a5c; padding: 6px 12px; margin-top: 4px;
+                   white-space: pre-wrap; max-height: 240px; overflow-y: auto; }
+
   /* HITL card */
   .hitl-card { border: 1px solid #8a6d1f; background: #241d0a44; border-radius: 10px;
                padding: 12px 16px; margin: 10px 0; }
@@ -360,6 +371,22 @@ async function streamEvents(url, body, at, steps, bump, spinner, attempt) {
   attempt = attempt || 0;
   abortCtl = new AbortController();
   let received = false, retrying = false;
+  // "reasoning…" indicator: fills the silent gaps while the model thinks
+  // (Anthropic redacts thinking text on the wire, so we show an honest timer)
+  let lastEvent = Date.now(), quietSince = null;
+  const ind = document.createElement("div");
+  ind.className = "thinkline"; ind.style.display = "none";
+  at.insertBefore(ind, spinner);
+  const tick = setInterval(() => {
+    const quiet = Date.now() - lastEvent;
+    if (quiet > 1500) {
+      if (!quietSince) quietSince = lastEvent;
+      ind.style.display = "";
+      ind.textContent = "💭 reasoning… " + Math.round((Date.now() - quietSince) / 1000) + "s";
+      at.appendChild(ind); at.appendChild(spinner); // keep both at the bottom
+      scrollDown();
+    } else { ind.style.display = "none"; quietSince = null; }
+  }, 400);
   try {
     const res = await fetch(url, {method: "POST", signal: abortCtl.signal,
       headers: authHeaders({"Content-Type": "application/json"}), body: JSON.stringify(body)});
@@ -376,6 +403,7 @@ async function streamEvents(url, body, at, steps, bump, spinner, attempt) {
       while ((i = buf.indexOf("\n\n")) >= 0) {
         const line = buf.slice(0, i); buf = buf.slice(i + 2);
         if (!line.startsWith("data: ")) continue;
+        lastEvent = Date.now();
         handleEvent(JSON.parse(line.slice(6)), at, steps, bump, spinner);
       }
     }
@@ -390,35 +418,84 @@ async function streamEvents(url, body, at, steps, bump, spinner, attempt) {
     } else {
       at.insertAdjacentHTML("beforeend", "<div class='bubble md'><p style='color:var(--red)'>Connection dropped — please tap Ask again.</p></div>");
     }
-  } finally { if (!retrying) { spinner.remove(); scrollDown(); } }
+  } finally {
+    clearInterval(tick); ind.remove();
+    if (!retrying) { spinner.remove(); scrollDown(); }
+  }
+}
+
+function closeThinking(at) {
+  // collapse the live reasoning line into a small expandable note
+  const tl = at.querySelector(".thinkline.live");
+  if (!tl) return;
+  tl.classList.remove("live");
+  const txt = tl.textContent;
+  tl.outerHTML = "<details class='thinkdone'><summary>💭 reasoning (" +
+    Math.max(1, Math.round(txt.length / 5)) + " words)</summary><div>" +
+    esc(txt) + "</div></details>";
 }
 
 function handleEvent(ev, at, steps, bump, spinner) {
-  if (ev.type === "tool_call") {
+  if (ev.type === "thinking") {
+    // live reasoning stream — grey italic line that types out
+    let tl = at.querySelector(".thinkline.live");
+    if (!tl) { tl = document.createElement("div"); tl.className = "thinkline live";
+               at.insertBefore(tl, spinner.parentNode === at ? spinner : null); }
+    tl.textContent += ev.text; tl.scrollTop = tl.scrollHeight; scrollDown();
+  } else if (ev.type === "tool_call") {
+    closeThinking(at);
+    // early chip (args null) may already exist — fill it when args arrive
+    if (ev.id) {
+      const existing = steps.querySelector("[data-tcid='" + ev.id + "']");
+      if (existing) {
+        if (ev.args) {
+          const isTask = ev.name === "task";
+          const subName = isTask ? (ev.args.subagent_type || "subagent") : null;
+          const label = isTask ? subName + " — " + (ev.args.description || "").slice(0, 70) : ev.name;
+          existing.querySelector(".step-head span:last-child").textContent = label;
+          if (isTask) existing.querySelector(".tag").textContent = "subagent";
+          let body = existing.querySelector(".step-body");
+          if (!body) { body = document.createElement("div"); body.className = "step-body";
+                       existing.appendChild(body);
+                       const head = existing.querySelector(".step-head");
+                       head.style.cursor = "pointer";
+                       head.onclick = () => existing.classList.toggle("open"); }
+          body.textContent = JSON.stringify(ev.args, null, 2);
+        }
+        return;
+      }
+    }
     bump();
     const isTask = ev.name === "task";
-    const subName = ev.args.subagent_type || "subagent";
-    addStep(steps, isTask ? "subagent" : "tool",
-      isTask ? subName + " — " + (ev.args.description || "").slice(0, 70) : ev.name,
-      JSON.stringify(ev.args, null, 2));
+    const args = ev.args || {};
+    const subName = args.subagent_type || "subagent";
+    const step = addStep(steps, isTask ? "subagent" : "tool",
+      isTask && ev.args ? subName + " — " + (args.description || "").slice(0, 70) : ev.name,
+      ev.args ? JSON.stringify(ev.args, null, 2) : null);
+    if (ev.id && step) step.dataset.tcid = ev.id;
   } else if (ev.type === "skill_load") {
+    closeThinking(at);
     bump(); addStep(steps, "skill", ev.skill, null);
   } else if (ev.type === "tool_result") {
     addStep(steps, "result", ev.name, ev.preview);
   } else if (ev.type === "token") {
+    closeThinking(at);
     // live typing: append raw text to a streaming bubble
     let b = at.querySelector(".bubble.streaming");
     if (!b) { b = document.createElement("div"); b.className = "bubble md streaming";
               b.style.whiteSpace = "pre-wrap"; at.appendChild(b); }
     b.textContent += ev.text; scrollDown();
   } else if (ev.type === "answer" && ev.content) {
+    closeThinking(at);
     // final: replace the streamed text with clean rendered markdown
     let b = at.querySelector(".bubble.streaming");
     if (b) { b.classList.remove("streaming"); b.style.whiteSpace = ""; b.innerHTML = renderMd(ev.content); }
     else { at.insertAdjacentHTML("beforeend", "<div class='bubble md'>" + renderMd(ev.content) + "</div>"); }
   } else if (ev.type === "error") {
+    closeThinking(at);
     at.insertAdjacentHTML("beforeend", "<div class='bubble md'><p style='color:var(--red)'>Error: " + esc(ev.message) + "</p></div>");
   } else if (ev.type === "interrupt") {
+    closeThinking(at);
     bump(); addStep(steps, "hitl", "approval requested: get_as_of_otb", JSON.stringify(ev.value, null, 2));
     renderHitl(at, ev);
   }
