@@ -386,8 +386,9 @@ function handleEvent(ev, at, steps, bump, spinner) {
   if (ev.type === "tool_call") {
     bump();
     const isTask = ev.name === "task";
+    const subName = ev.args.subagent_type || "subagent";
     addStep(steps, isTask ? "subagent" : "tool",
-      isTask ? "mix-analyst — " + (ev.args.description || "").slice(0, 70) : ev.name,
+      isTask ? subName + " — " + (ev.args.description || "").slice(0, 70) : ev.name,
       JSON.stringify(ev.args, null, 2));
   } else if (ev.type === "skill_load") {
     bump(); addStep(steps, "skill", ev.skill, null);

@@ -6,3 +6,6 @@ data/
 .pytest_cache/
 node_modules/
 .env.aws
+*.egg-info/
+build/
+dist/
