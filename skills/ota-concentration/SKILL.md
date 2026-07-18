@@ -8,8 +8,12 @@ description: "Judgment skill for OTA dependency: measures OTA share_of_revenue w
 Why the GM cares: every OTA room costs 15–25% commission, and beyond the cash
 leak, a book leaning on OTA means the hotel has ceded pricing power and the guest
 relationship to a third party. The commercial goal is to use OTA to fill gaps,
-not to run the house. Call `get_segment_mix(stay_month)` for each future month
-and read the OTA segment's **share_of_revenue** and **share_of_room_nights**.
+not to run the house. Call `get_segment_mix(stay_month)` **without a
+macro_group filter** and read the **OTA** row from the returned segments — take
+its **share_of_revenue** and **share_of_room_nights**. Note: OTA is a *market
+code*, not a macro group (its macro group is "Retail"), so never pass
+`macro_group="OTA"` — that matches nothing and wastes a call. Valid macro_group
+values are only Retail / MICE / Corporate / Leisure / Leisure Group.
 
 ## Thresholds and actions
 - **OTA share_of_revenue at or below 20%**: healthy — OTA is filling gaps, not
