@@ -1,6 +1,0 @@
-playwright>=1.49
-psycopg[binary]>=3.2
-deepagents
-langchain-anthropic
-langgraph
-pyyaml>=6.0
