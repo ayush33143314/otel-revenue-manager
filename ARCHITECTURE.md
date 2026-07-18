@@ -20,7 +20,7 @@ passing for anchor 2026-07-17; `LOAD_PROOF.json` cross-checked against
 `SCRAPE_MANIFEST.json`.
 
 ## 2. Database and views
-Neon Postgres (deploy) / docker-compose (dev). `sql/views.sql`:
+AWS RDS Postgres (deploy) / docker-compose (dev). `sql/views.sql`:
 `vw_stay_night_base` (Posted, non-cancelled), `vw_segment_stay_night`
 (stay-date-effective macro group), `vw_stay_night_all` (unfiltered, so the
 as-of rebuild also never touches the raw table).
@@ -89,11 +89,13 @@ version pin, ≥3 judgment skills (threshold+action regex, ≥80 words), routing
 guardrails — filesystem only.
 
 ## 7. Deployment topology
-Neon Postgres (loaded by this ETL) → LangGraph server → Agent Chat UI
-streaming tool/skill calls, behind basic auth. `GET /health` reads
-`db_fingerprint`, `dataset_revision`, `row_hash`,
-`financial_status_posted_only_rows` live from the DB. API keys are deployment
-env vars, never in git.
+AWS App Runner (us-east-1) runs one container — FastAPI + a static chat UI +
+the agent — colocated with **AWS RDS Postgres** (loaded by this ETL). The UI
+streams tool/skill calls over SSE; the whole app is behind HTTP basic auth.
+`GET /health` reads `db_fingerprint`, `dataset_revision`, `row_hash`,
+`financial_status_posted_only_rows` live from RDS. Secrets (API key, DB URL,
+basic-auth pair) come from AWS Secrets Manager via the instance IAM role — never
+in git. See DEPLOY.md for resources and the redeploy / submission-day runbook.
 
 ## 8. Out of scope
 MCP (optional in brief) — no correctness gain over the five tools. Rate-plan
