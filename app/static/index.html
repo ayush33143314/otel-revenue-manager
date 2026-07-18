@@ -356,8 +356,10 @@ async function ask(message) {
   streaming = false; setComposer(false);
 }
 
-async function streamEvents(url, body, at, steps, bump, spinner) {
+async function streamEvents(url, body, at, steps, bump, spinner, attempt) {
+  attempt = attempt || 0;
   abortCtl = new AbortController();
+  let received = false, retrying = false;
   try {
     const res = await fetch(url, {method: "POST", signal: abortCtl.signal,
       headers: authHeaders({"Content-Type": "application/json"}), body: JSON.stringify(body)});
@@ -368,6 +370,7 @@ async function streamEvents(url, body, at, steps, bump, spinner) {
     while (true) {
       const {done, value} = await reader.read();
       if (done) break;
+      received = true;
       buf += dec.decode(value, {stream: true});
       let i;
       while ((i = buf.indexOf("\n\n")) >= 0) {
@@ -377,9 +380,17 @@ async function streamEvents(url, body, at, steps, bump, spinner) {
       }
     }
   } catch (e) {
-    if (e.name !== "AbortError")
-      at.insertAdjacentHTML("beforeend", "<div class='bubble md'><p style='color:var(--red)'>Connection error: " + esc(String(e.message || e)) + "</p></div>");
-  } finally { spinner.remove(); scrollDown(); }
+    if (e.name === "AbortError") {
+      /* user pressed Stop — no error message */
+    } else if (!received && attempt < 1) {
+      // transient connection blip before any data arrived — retry once silently
+      retrying = true;
+      await new Promise(r => setTimeout(r, 1200));
+      return streamEvents(url, body, at, steps, bump, spinner, attempt + 1);
+    } else {
+      at.insertAdjacentHTML("beforeend", "<div class='bubble md'><p style='color:var(--red)'>Connection dropped — please tap Ask again.</p></div>");
+    }
+  } finally { if (!retrying) { spinner.remove(); scrollDown(); } }
 }
 
 function handleEvent(ev, at, steps, bump, spinner) {

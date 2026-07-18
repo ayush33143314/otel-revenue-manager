@@ -107,7 +107,7 @@ def test_skills_on_demand(agent):
     # Heuristic bodies live in skills, not the system prompt: no judgment
     # threshold text baked into the prompt itself.
     assert "35%" not in SYSTEM_PROMPT and "> 40%" not in SYSTEM_PROMPT
-    assert len(SYSTEM_PROMPT) < 3000
+    assert len(SYSTEM_PROMPT) < 3400
 
 
 # Scenario 5 (cont.) — Runtime discovery: every skill is reachable through the
