@@ -34,6 +34,7 @@ from deepagents.backends import (
     StateBackend,
     StoreBackend,
 )
+from langchain_anthropic import ChatAnthropic
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.store.memory import InMemoryStore
 
@@ -50,6 +51,17 @@ SKILLS_HOST_DIR = ROOT / "skills"     # on-disk skill pack
 SKILLS_VIRTUAL_PATH = "/skills"       # where the agent's backend mounts it
 
 MODEL = "claude-sonnet-5"
+
+
+def _model():
+    """Claude Sonnet with extended thinking DISABLED. Deepagents enables
+    interleaved thinking by default for Claude, which (a) breaks token-level
+    ('messages') streaming — the answer step replays the tool-step's thinking
+    block and Anthropic rejects it — and (b) adds latency. Disabling it lets the
+    answer stream token-by-token and is faster; the judgment lives in the skills
+    and tools, not in model thinking, so answer quality holds."""
+    return ChatAnthropic(model=MODEL, max_tokens=4096, thinking={"type": "disabled"})
+
 
 SYSTEM_PROMPT_TEMPLATE = """You are the hotel's Revenue Manager, briefing the
 General Manager. Your job is commercial: help the GM MAKE more money (price to
@@ -168,7 +180,7 @@ def build_agent(checkpointer=None, store=None, today: str | None = None):
         today=today or date.today().isoformat()
     )
     return create_deep_agent(
-        model=MODEL,
+        model=_model(),
         tools=[
             get_otb_summary,
             get_segment_mix,

@@ -405,8 +405,17 @@ function handleEvent(ev, at, steps, bump, spinner) {
     bump(); addStep(steps, "skill", ev.skill, null);
   } else if (ev.type === "tool_result") {
     addStep(steps, "result", ev.name, ev.preview);
+  } else if (ev.type === "token") {
+    // live typing: append raw text to a streaming bubble
+    let b = at.querySelector(".bubble.streaming");
+    if (!b) { b = document.createElement("div"); b.className = "bubble md streaming";
+              b.style.whiteSpace = "pre-wrap"; at.appendChild(b); }
+    b.textContent += ev.text; scrollDown();
   } else if (ev.type === "answer" && ev.content) {
-    at.insertAdjacentHTML("beforeend", "<div class='bubble md'>" + renderMd(ev.content) + "</div>");
+    // final: replace the streamed text with clean rendered markdown
+    let b = at.querySelector(".bubble.streaming");
+    if (b) { b.classList.remove("streaming"); b.style.whiteSpace = ""; b.innerHTML = renderMd(ev.content); }
+    else { at.insertAdjacentHTML("beforeend", "<div class='bubble md'>" + renderMd(ev.content) + "</div>"); }
   } else if (ev.type === "error") {
     at.insertAdjacentHTML("beforeend", "<div class='bubble md'><p style='color:var(--red)'>Error: " + esc(ev.message) + "</p></div>");
   } else if (ev.type === "interrupt") {

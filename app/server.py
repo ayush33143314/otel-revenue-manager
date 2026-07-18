@@ -135,15 +135,37 @@ def _sse(event: dict) -> str:
 
 
 def _stream_agent(payload, config):
-    """Run the agent, yielding SSE events for tool calls / results / text."""
+    """Run the agent, yielding SSE events. Two LangGraph stream modes at once:
+    'updates' → tool calls / skill loads / results / interrupt; 'messages' →
+    the final answer token-by-token so it types out live. Token streaming works
+    because the model has extended thinking disabled (see app.agent._model)."""
     agent = get_agent()
     final_text = ""
     seen_tool_calls: set[str] = set()
     try:
         for chunk in agent.stream(payload, config=config,
-                                  stream_mode="updates", subgraphs=True):
-            update = chunk[-1] if isinstance(chunk, tuple) else chunk
-            for node, out in (update or {}).items():
+                                  stream_mode=["updates", "messages"],
+                                  subgraphs=True):
+            # subgraphs=True + multi-mode → (namespace, mode, data)
+            if isinstance(chunk, tuple) and len(chunk) == 3:
+                ns, mode, data = chunk
+            elif isinstance(chunk, tuple) and len(chunk) == 2:
+                ns, mode, data = (), chunk[0], chunk[1]
+            else:
+                continue
+
+            if mode == "messages":
+                # live answer tokens — top-level assistant text only (ns empty);
+                # subagent chatter and empty tool-deciding turns are skipped
+                msg = data[0] if isinstance(data, tuple) else data
+                if not ns and type(msg).__name__ in ("AIMessageChunk", "AIMessage"):
+                    delta = _text_of(getattr(msg, "content", ""))
+                    if delta:
+                        yield _sse({"type": "token", "text": delta})
+                continue
+
+            # mode == "updates"
+            for node, out in (data or {}).items():
                 if node == "__interrupt__":
                     for intr in out:
                         yield _sse({"type": "interrupt",
@@ -165,8 +187,9 @@ def _stream_agent(payload, config):
                         yield _sse({"type": "tool_result",
                                     "name": getattr(msg, "name", ""),
                                     "preview": str(msg.content)[:400]})
-                    elif getattr(msg, "content", None) and type(msg).__name__ == "AIMessage":
-                        final_text = _text_of(msg.content)
+                    elif getattr(msg, "content", None) and type(msg).__name__ == "AIMessage" and not ns:
+                        final_text = _text_of(msg.content)  # authoritative full text
+        # final: clean markdown render replaces the streamed tokens
         yield _sse({"type": "answer", "content": final_text})
     except Exception as exc:  # noqa: BLE001
         yield _sse({"type": "error", "message": str(exc)[:500]})
