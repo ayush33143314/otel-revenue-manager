@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Revenue Manager — Grand Harbour Hotel</title>
+<style>
+  :root {
+    --bg: #0b1220; --panel: #101a2e; --panel-2: #0f1a2c; --line: #1e2c47;
+    --ink: #dbe4f0; --ink-soft: #8fa3ba; --ink-faint: #5b6c80;
+    --teal: #14b8a6; --teal-soft: #14b8a622; --amber: #e8c96a; --red: #f28b82;
+    --green: #6ecf94; --user-bg: #16233d; --user-line: #24365c;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; }
+  body { font: 15px/1.55 -apple-system, "Segoe UI", system-ui, sans-serif;
+         background: var(--bg); color: var(--ink); display: flex; flex-direction: column; }
+
+  /* ── header ─────────────────────────────────────────────── */
+  header { display: flex; align-items: center; gap: 14px; padding: 10px 18px;
+           background: var(--panel); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .brand { display: flex; align-items: baseline; gap: 10px; margin-right: auto; }
+  .brand h1 { font-size: 15.5px; color: var(--teal); font-weight: 650; }
+  .brand span { font-size: 12px; color: var(--ink-faint); }
+  .chip { font: 11.5px ui-monospace, monospace; padding: 4px 10px; border-radius: 20px;
+          border: 1px solid var(--line); color: var(--ink-soft); background: var(--panel-2);
+          display: inline-flex; align-items: center; gap: 6px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-faint); }
+  .dot.ok { background: var(--green); }
+  .dot.bad { background: var(--red); }
+  header button, .ghost-btn {
+    font: 12.5px -apple-system, "Segoe UI", system-ui, sans-serif; font-weight: 600;
+    padding: 6px 13px; border-radius: 7px; border: 1px solid var(--line);
+    background: var(--panel-2); color: var(--ink-soft); cursor: pointer; }
+  header button:hover, .ghost-btn:hover { color: var(--ink); border-color: #2c405f; }
+  header button.active { color: var(--teal); border-color: var(--teal); }
+
+  /* ── log area ────────────────────────────────────────────── */
+  #log { flex: 1; overflow-y: auto; padding: 26px 18px 10px; scroll-behavior: smooth; }
+  .col { max-width: 880px; margin: 0 auto; }
+  .turn { margin: 0 0 26px; }
+  .role { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+          color: var(--ink-faint); margin: 0 0 6px 2px; }
+  .role .you { color: var(--amber); } .role .rm { color: var(--teal); }
+  .bubble { padding: 13px 17px; border-radius: 12px; }
+  .user .bubble { background: var(--user-bg); border: 1px solid var(--user-line); }
+  .agent .bubble { background: var(--panel-2); border: 1px solid var(--line); }
+
+  /* markdown inside answers */
+  .md h1, .md h2, .md h3 { margin: 14px 0 6px; line-height: 1.3; }
+  .md h1 { font-size: 19px; } .md h2 { font-size: 17px; } .md h3 { font-size: 15.5px; }
+  .md p { margin: 8px 0; }
+  .md ul, .md ol { margin: 8px 0; padding-left: 24px; }
+  .md li { margin: 3px 0; }
+  .md code { font: 12.5px ui-monospace, monospace; background: #0b1526;
+             border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; }
+  .md pre { background: #0b1526; border: 1px solid var(--line); border-radius: 8px;
+            padding: 12px; overflow-x: auto; margin: 10px 0; }
+  .md pre code { border: 0; padding: 0; background: none; }
+  .md strong { color: #fff; }
+  .md .tbl { overflow-x: auto; margin: 10px 0; }
+  .md table { border-collapse: collapse; font-size: 13.5px; min-width: 50%; }
+  .md th { text-align: left; color: var(--ink-soft); font-size: 11.5px; text-transform: uppercase;
+           letter-spacing: .05em; padding: 6px 12px; border-bottom: 1px solid #2c405f; }
+  .md td { padding: 6px 12px; border-bottom: 1px solid var(--line);
+           font-variant-numeric: tabular-nums; }
+  .md hr { border: 0; border-top: 1px solid var(--line); margin: 14px 0; }
+  .md blockquote { border-left: 3px solid var(--teal); margin: 8px 0; padding: 2px 14px;
+                   color: var(--ink-soft); }
+
+  /* ── activity log ───────────────────────────────────────── */
+  .activity { margin: 8px 0 0; }
+  .activity summary { cursor: pointer; font-size: 12px; color: var(--ink-faint);
+                      user-select: none; list-style: none; display: flex; align-items: center; gap: 7px; }
+  .activity summary::before { content: "▸"; transition: transform .15s; font-size: 10px; }
+  .activity[open] summary::before { transform: rotate(90deg); }
+  .activity .count { color: var(--teal); font-weight: 600; }
+  .steps { margin: 8px 0 0; border-left: 2px solid var(--line); padding-left: 14px;
+           display: flex; flex-direction: column; gap: 5px; }
+  .step { font: 12px ui-monospace, monospace; }
+  .step-head { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 3px 0;
+               color: var(--ink-soft); flex-wrap: wrap; }
+  .step-head:hover { color: var(--ink); }
+  .tag { font-size: 10px; font-weight: 700; letter-spacing: .07em; padding: 2px 8px;
+         border-radius: 12px; text-transform: uppercase; }
+  .tag.tool { background: #12263f; color: #8fb8e0; border: 1px solid #2a4a6e; }
+  .tag.skill { background: #0e2418; color: #93d8ac; border: 1px solid #3b6e4f; }
+  .tag.result { background: #151b26; color: #7d8b99; border: 1px solid #2a3444; }
+  .tag.hitl { background: #241d0a; color: var(--amber); border: 1px solid #8a6d1f; }
+  .tag.subagent { background: #241436; color: #c9a6f0; border: 1px solid #5b3a80; }
+  .step-body { display: none; background: #0b1526; border: 1px solid var(--line);
+               border-radius: 7px; padding: 9px 12px; margin: 4px 0 6px;
+               white-space: pre-wrap; word-break: break-word; color: var(--ink-soft);
+               max-height: 260px; overflow-y: auto; font-size: 11.5px; }
+  .step.open .step-body { display: block; }
+  .running { display: inline-flex; gap: 4px; margin: 10px 2px; }
+  .running i { width: 6px; height: 6px; border-radius: 50%; background: var(--teal);
+               animation: pulse 1.2s infinite; }
+  .running i:nth-child(2) { animation-delay: .2s; } .running i:nth-child(3) { animation-delay: .4s; }
+  @keyframes pulse { 0%,100% { opacity: .25; transform: scale(.85);} 50% { opacity: 1; transform: scale(1);} }
+  @media (prefers-reduced-motion: reduce) { .running i { animation: none; opacity: .7; } }
+
+  /* HITL card */
+  .hitl-card { border: 1px solid #8a6d1f; background: #241d0a44; border-radius: 10px;
+               padding: 12px 16px; margin: 10px 0; }
+  .hitl-card .t { color: var(--amber); font-weight: 650; font-size: 13.5px; margin-bottom: 4px; }
+  .hitl-card pre { font: 11.5px ui-monospace, monospace; color: var(--ink-soft);
+                   margin: 6px 0 10px; white-space: pre-wrap; }
+  .hitl-card button { margin-right: 8px; padding: 7px 16px; border-radius: 7px; border: 0;
+                      font-weight: 650; cursor: pointer; font-size: 13px; }
+  .approve { background: var(--amber); color: #241d0a; }
+  .deny { background: var(--panel-2); color: var(--ink-soft); border: 1px solid var(--line) !important; }
+
+  /* ── suggestions + composer ─────────────────────────────── */
+  .suggest { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 14px; }
+  .suggest button { font-size: 12.5px; padding: 7px 14px; border-radius: 18px;
+                    border: 1px solid var(--line); background: var(--panel-2);
+                    color: var(--ink-soft); cursor: pointer; }
+  .suggest button:hover { border-color: var(--teal); color: var(--teal); }
+  footer { padding: 12px 18px 16px; background: linear-gradient(transparent, var(--bg) 30%); }
+  .composer { display: flex; gap: 10px; max-width: 880px; margin: 0 auto; }
+  .composer textarea { flex: 1; resize: none; padding: 12px 15px; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+    font: 15px/1.45 inherit; min-height: 48px; max-height: 160px; outline: none; }
+  .composer textarea:focus { border-color: var(--teal); }
+  .composer button { padding: 0 22px; border-radius: 10px; border: 0; background: var(--teal);
+    color: #04211c; font-weight: 700; font-size: 14.5px; cursor: pointer; }
+  .composer button:disabled { opacity: .45; cursor: default; }
+  .composer button.stop { background: var(--red); color: #2b0a08; }
+  .hint { max-width: 880px; margin: 6px auto 0; font-size: 11.5px; color: var(--ink-faint); }
+
+  /* ── login ──────────────────────────────────────────────── */
+  #login { position: fixed; inset: 0; background: var(--bg); display: flex;
+           align-items: center; justify-content: center; z-index: 10; }
+  .login-card { width: min(360px, 92vw); background: var(--panel); border: 1px solid var(--line);
+                border-radius: 14px; padding: 30px 30px 26px; }
+  .login-card h2 { font-size: 18px; margin-bottom: 2px; }
+  .login-card .s { font-size: 12.5px; color: var(--ink-faint); margin-bottom: 20px; }
+  .login-card label { display: block; font-size: 11.5px; font-weight: 650; letter-spacing: .06em;
+                      text-transform: uppercase; color: var(--ink-soft); margin: 12px 0 5px; }
+  .login-card input { width: 100%; padding: 11px 13px; border-radius: 8px;
+    border: 1px solid var(--line); background: var(--bg); color: var(--ink); font-size: 14.5px; }
+  .login-card input:focus { border-color: var(--teal); outline: none; }
+  .login-card button { width: 100%; margin-top: 20px; padding: 12px; border-radius: 8px;
+    border: 0; background: var(--teal); color: #04211c; font-weight: 700; font-size: 14.5px;
+    cursor: pointer; }
+  .login-err { color: var(--red); font-size: 12.5px; margin-top: 10px; min-height: 17px; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div id="login">
+  <form class="login-card" id="loginForm">
+    <h2>Revenue Manager Agent</h2>
+    <div class="s">Grand Harbour Hotel · reviewer access</div>
+    <label for="u">Username</label>
+    <input id="u" autocomplete="username" required>
+    <label for="p">Password</label>
+    <input id="p" type="password" autocomplete="current-password" required>
+    <button>Sign in</button>
+    <div class="login-err" id="loginErr"></div>
+  </form>
+</div>
+
+<header class="hidden" id="hdr">
+  <div class="brand"><h1>Revenue Manager</h1><span>Grand Harbour Hotel</span></div>
+  <span class="chip" id="healthChip"><span class="dot" id="healthDot"></span><span id="healthTxt">checking db…</span></span>
+  <button id="activityBtn" class="active" title="Show or hide tool/skill activity">Activity: on</button>
+  <button id="newChatBtn" title="Start a fresh conversation">New chat</button>
+  <button id="logoutBtn">Log out <span id="who" style="opacity:.6"></span></button>
+</header>
+
+<div id="log" class="hidden"><div class="col" id="col">
+  <div class="turn agent">
+    <div class="role"><span class="rm">Revenue Manager</span></div>
+    <div class="bubble md"><p>Morning. I read the live reservation book — ask me anything a GM would ask.</p></div>
+    <div class="suggest" id="suggest">
+      <button>What's driving September?</button>
+      <button>Are we too dependent on OTA?</button>
+      <button>How is our booking pace this week?</button>
+      <button>How much group business is in October?</button>
+      <button>What changed in the last 7 days for future stays?</button>
+    </div>
+  </div>
+</div></div>
+
+<footer class="hidden" id="ftr">
+  <form class="composer" id="composer">
+    <textarea id="q" rows="1" placeholder="Ask about revenue, pace, segments, groups, cancellations…"></textarea>
+    <button id="sendBtn" type="submit">Ask</button>
+  </form>
+  <div class="hint">Tool calls and skill loads stream live under each answer. Point-in-time rebuilds ask for your approval first.</div>
+</footer>
+
+<script>
+"use strict";
+/* ── auth ─────────────────────────────────────────────────── */
+let AUTH = sessionStorage.getItem("rm_auth") || null;
+const $ = id => document.getElementById(id);
+
+function authHeaders(extra) {
+  return Object.assign({"Authorization": "Basic " + AUTH}, extra || {});
+}
+async function tryLogin(user, pass) {
+  const tok = btoa(user + ":" + pass);
+  const r = await fetch("/api/thread", {headers: {"Authorization": "Basic " + tok}});
+  if (!r.ok) return false;
+  AUTH = tok; sessionStorage.setItem("rm_auth", tok);
+  sessionStorage.setItem("rm_user", user);
+  return true;
+}
+function showApp() {
+  $("login").classList.add("hidden");
+  ["hdr", "log", "ftr"].forEach(i => $(i).classList.remove("hidden"));
+  $("who").textContent = "(" + (sessionStorage.getItem("rm_user") || "") + ")";
+  loadHealth();
+}
+function logout() {
+  sessionStorage.removeItem("rm_auth"); sessionStorage.removeItem("rm_user");
+  location.reload();
+}
+$("loginForm").onsubmit = async e => {
+  e.preventDefault();
+  $("loginErr").textContent = "";
+  const ok = await tryLogin($("u").value.trim(), $("p").value).catch(() => false);
+  if (ok) showApp();
+  else $("loginErr").textContent = "Invalid credentials — check the username and password you were given.";
+};
+$("logoutBtn").onclick = logout;
+if (AUTH) {
+  fetch("/api/thread", {headers: authHeaders()}).then(r => {
+    if (r.ok) showApp(); else logout();
+  }).catch(() => {});
+}
+
+/* ── health chip ──────────────────────────────────────────── */
+async function loadHealth() {
+  try {
+    const h = await (await fetch("/health")).json();
+    $("healthDot").className = "dot ok";
+    $("healthTxt").textContent = "db " + h.db_fingerprint.slice(0, 8) + "… · rev " + h.dataset_revision;
+    $("healthChip").title = "posted rows: " + h.financial_status_posted_only_rows;
+  } catch {
+    $("healthDot").className = "dot bad";
+    $("healthTxt").textContent = "db unreachable";
+  }
+}
+
+/* ── tiny markdown renderer (headers, bold/italic, code, tables, lists, hr, quotes) ── */
+function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+function inline(s) {
+  return s
+    .replace(/`([^`]+)`/g, (_, c) => "<code>" + c + "</code>")
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/(^|[\s(])\*([^*\n]+)\*(?=[\s).,;:!?]|$)/g, "$1<em>$2</em>")
+    .replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+}
+function renderMd(src) {
+  const lines = esc(src).split("\n");
+  let html = "", i = 0, para = [];
+  const flush = () => { if (para.length) { html += "<p>" + inline(para.join(" ")) + "</p>"; para = []; } };
+  while (i < lines.length) {
+    const L = lines[i];
+    if (/^```/.test(L)) { flush(); let code = []; i++;
+      while (i < lines.length && !/^```/.test(lines[i])) code.push(lines[i++]);
+      i++; html += "<pre><code>" + code.join("\n") + "</code></pre>"; continue; }
+    if (/^\s*\|/.test(L) && i + 1 < lines.length && /^\s*\|[\s:|-]+\|?\s*$/.test(lines[i + 1])) {
+      flush();
+      const cells = r => r.trim().replace(/^\||\|$/g, "").split("|").map(c => inline(c.trim()));
+      let t = "<div class='tbl'><table><thead><tr>" + cells(L).map(c => "<th>" + c + "</th>").join("") + "</tr></thead><tbody>";
+      i += 2;
+      while (i < lines.length && /^\s*\|/.test(lines[i])) {
+        t += "<tr>" + cells(lines[i]).map(c => "<td>" + c + "</td>").join("") + "</tr>"; i++;
+      }
+      html += t + "</tbody></table></div>"; continue; }
+    const h = L.match(/^(#{1,3})\s+(.*)/);
+    if (h) { flush(); const n = h[1].length; html += "<h" + n + ">" + inline(h[2]) + "</h" + n + ">"; i++; continue; }
+    if (/^\s*([-*])\s+/.test(L)) { flush(); let items = [];
+      while (i < lines.length && /^\s*[-*]\s+/.test(lines[i])) items.push(lines[i++].replace(/^\s*[-*]\s+/, ""));
+      html += "<ul>" + items.map(x => "<li>" + inline(x) + "</li>").join("") + "</ul>"; continue; }
+    if (/^\s*\d+\.\s+/.test(L)) { flush(); let items = [];
+      while (i < lines.length && /^\s*\d+\.\s+/.test(lines[i])) items.push(lines[i++].replace(/^\s*\d+\.\s+/, ""));
+      html += "<ol>" + items.map(x => "<li>" + inline(x) + "</li>").join("") + "</ol>"; continue; }
+    if (/^\s*(---+|\*\*\*+)\s*$/.test(L)) { flush(); html += "<hr>"; i++; continue; }
+    if (/^\s*&gt;\s?/.test(L)) { flush(); let q = [];
+      while (i < lines.length && /^\s*&gt;\s?/.test(lines[i])) q.push(lines[i++].replace(/^\s*&gt;\s?/, ""));
+      html += "<blockquote>" + inline(q.join(" ")) + "</blockquote>"; continue; }
+    if (L.trim() === "") { flush(); i++; continue; }
+    para.push(L.trim()); i++;
+  }
+  flush(); return html;
+}
+
+/* ── chat state ───────────────────────────────────────────── */
+let threadId = null, streaming = false, abortCtl = null;
+let showActivity = true;
+const col = $("col"), logEl = $("log");
+
+$("activityBtn").onclick = () => {
+  showActivity = !showActivity;
+  $("activityBtn").textContent = "Activity: " + (showActivity ? "on" : "off");
+  $("activityBtn").classList.toggle("active", showActivity);
+  document.querySelectorAll(".activity").forEach(d => d.classList.toggle("hidden", !showActivity));
+};
+$("newChatBtn").onclick = () => {
+  if (streaming) return;
+  threadId = null;
+  col.querySelectorAll(".turn:not(:first-child)").forEach(n => n.remove());
+};
+
+function turn(roleCls, roleLabel) {
+  const t = document.createElement("div");
+  t.className = "turn " + roleCls;
+  t.innerHTML = "<div class='role'><span class='" + (roleCls === "user" ? "you" : "rm") + "'>" + roleLabel + "</span></div>";
+  col.appendChild(t); return t;
+}
+function scrollDown() { logEl.scrollTop = logEl.scrollHeight; }
+
+function addStep(steps, tag, label, detail) {
+  const s = document.createElement("div");
+  s.className = "step";
+  const head = document.createElement("div");
+  head.className = "step-head";
+  head.innerHTML = "<span class='tag " + tag + "'>" + tag + "</span><span>" + esc(label) + "</span>";
+  s.appendChild(head);
+  if (detail) {
+    const b = document.createElement("div");
+    b.className = "step-body"; b.textContent = detail; s.appendChild(b);
+    head.onclick = () => s.classList.toggle("open");
+    head.style.cursor = "pointer";
+  }
+  steps.appendChild(s); scrollDown(); return s;
+}
+
+async function ask(message) {
+  if (streaming || !message.trim()) return;
+  streaming = true;
+  setComposer(true);
+  turn("user", "You").insertAdjacentHTML("beforeend",
+    "<div class='bubble'>" + esc(message) + "</div>");
+  const at = turn("agent", "Revenue Manager");
+  const act = document.createElement("details");
+  act.className = "activity" + (showActivity ? "" : " hidden");
+  act.open = true;
+  act.innerHTML = "<summary><span class='count' data-n='0'>0 steps</span> — live activity</summary>";
+  const steps = document.createElement("div");
+  steps.className = "steps"; act.appendChild(steps); at.appendChild(act);
+  const spinner = document.createElement("div");
+  spinner.className = "running"; spinner.innerHTML = "<i></i><i></i><i></i>";
+  at.appendChild(spinner); scrollDown();
+
+  let n = 0;
+  const bump = () => { n++; act.querySelector(".count").textContent = n + " step" + (n > 1 ? "s" : ""); };
+  await streamEvents("/api/chat", {message, thread_id: threadId}, at, steps, bump, spinner);
+  streaming = false; setComposer(false);
+}
+
+async function streamEvents(url, body, at, steps, bump, spinner) {
+  abortCtl = new AbortController();
+  try {
+    const res = await fetch(url, {method: "POST", signal: abortCtl.signal,
+      headers: authHeaders({"Content-Type": "application/json"}), body: JSON.stringify(body)});
+    if (res.status === 401) { logout(); return; }
+    const tid = res.headers.get("X-Thread-Id"); if (tid) threadId = tid;
+    const reader = res.body.getReader(); const dec = new TextDecoder();
+    let buf = "";
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, {stream: true});
+      let i;
+      while ((i = buf.indexOf("\n\n")) >= 0) {
+        const line = buf.slice(0, i); buf = buf.slice(i + 2);
+        if (!line.startsWith("data: ")) continue;
+        handleEvent(JSON.parse(line.slice(6)), at, steps, bump, spinner);
+      }
+    }
+  } catch (e) {
+    if (e.name !== "AbortError")
+      at.insertAdjacentHTML("beforeend", "<div class='bubble md'><p style='color:var(--red)'>Connection error: " + esc(String(e.message || e)) + "</p></div>");
+  } finally { spinner.remove(); scrollDown(); }
+}
+
+function handleEvent(ev, at, steps, bump, spinner) {
+  if (ev.type === "tool_call") {
+    bump();
+    const isTask = ev.name === "task";
+    addStep(steps, isTask ? "subagent" : "tool",
+      isTask ? "mix-analyst — " + (ev.args.description || "").slice(0, 70) : ev.name,
+      JSON.stringify(ev.args, null, 2));
+  } else if (ev.type === "skill_load") {
+    bump(); addStep(steps, "skill", ev.skill, null);
+  } else if (ev.type === "tool_result") {
+    addStep(steps, "result", ev.name, ev.preview);
+  } else if (ev.type === "answer" && ev.content) {
+    at.insertAdjacentHTML("beforeend", "<div class='bubble md'>" + renderMd(ev.content) + "</div>");
+  } else if (ev.type === "error") {
+    at.insertAdjacentHTML("beforeend", "<div class='bubble md'><p style='color:var(--red)'>Error: " + esc(ev.message) + "</p></div>");
+  } else if (ev.type === "interrupt") {
+    bump(); addStep(steps, "hitl", "approval requested: get_as_of_otb", JSON.stringify(ev.value, null, 2));
+    renderHitl(at, ev);
+  }
+}
+
+function renderHitl(at, ev) {
+  const reqs = (ev.value && ev.value.action_requests) || [];
+  const card = document.createElement("div");
+  card.className = "hitl-card";
+  const title = reqs.length > 1
+    ? "⏸ Approval needed — " + reqs.length + " point-in-time rebuilds"
+    : "⏸ Approval needed — point-in-time rebuild";
+  const body = reqs.length
+    ? reqs.map(r => esc(JSON.stringify(r.args || {}, null, 2))).join("\n")
+    : esc(JSON.stringify(ev.value || {}, null, 2));
+  card.innerHTML = "<div class='t'>" + title + "</div><pre>" + body + "</pre>";
+  const ok = document.createElement("button"); ok.className = "approve"; ok.textContent = "Approve";
+  const no = document.createElement("button"); no.className = "deny"; no.textContent = "Deny";
+  card.append(ok, no); at.appendChild(card); scrollDown();
+  const resume = async decision => {
+    ok.disabled = no.disabled = true;
+    card.style.opacity = .55;
+    streaming = true; setComposer(true);
+    const t2 = turn("agent", "Revenue Manager");
+    const act = document.createElement("details");
+    act.className = "activity" + (showActivity ? "" : " hidden"); act.open = true;
+    act.innerHTML = "<summary><span class='count'>0 steps</span> — live activity</summary>";
+    const steps = document.createElement("div"); steps.className = "steps"; act.appendChild(steps);
+    t2.appendChild(act);
+    const sp = document.createElement("div"); sp.className = "running"; sp.innerHTML = "<i></i><i></i><i></i>";
+    t2.appendChild(sp);
+    let n = 0; const bump = () => { n++; act.querySelector(".count").textContent = n + " steps"; };
+    await streamEvents("/api/resume", {thread_id: threadId, decision}, t2, steps, bump, sp);
+    streaming = false; setComposer(false);
+  };
+  ok.onclick = () => resume("approve");
+  no.onclick = () => resume("reject");
+}
+
+/* ── composer ─────────────────────────────────────────────── */
+const qEl = $("q"), sendBtn = $("sendBtn");
+function setComposer(busy) {
+  if (busy) { sendBtn.textContent = "Stop"; sendBtn.classList.add("stop"); }
+  else { sendBtn.textContent = "Ask"; sendBtn.classList.remove("stop"); qEl.focus(); }
+}
+$("composer").onsubmit = e => {
+  e.preventDefault();
+  if (streaming) { abortCtl && abortCtl.abort(); return; }
+  const v = qEl.value; qEl.value = ""; qEl.style.height = "48px";
+  ask(v);
+};
+qEl.addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("composer").requestSubmit(); }
+});
+qEl.addEventListener("input", () => {
+  qEl.style.height = "48px"; qEl.style.height = Math.min(qEl.scrollHeight, 160) + "px";
+});
+$("suggest").addEventListener("click", e => {
+  if (e.target.tagName === "BUTTON") ask(e.target.textContent);
+});
+</script>
+</body>
+</html>

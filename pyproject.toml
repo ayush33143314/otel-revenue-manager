@@ -1,0 +1,31 @@
+[project]
+name = "otel-revenue-agent"
+version = "0.1.0"
+description = "Revenue Manager Agent for a hotel GM — otel build challenge solution"
+requires-python = ">=3.12"
+dependencies = [
+    "playwright>=1.49",
+    "psycopg[binary]>=3.2",
+    "deepagents",
+    "langchain-anthropic",
+    "langgraph",
+    "pyyaml>=6.0",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "langgraph-checkpoint-postgres>=2.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["app", "tools", "etl"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

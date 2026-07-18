@@ -1,0 +1,11 @@
+# Runtime deps for the deployed app only (no Playwright/Chromium — the ETL is
+# run locally, never in the container).
+fastapi>=0.115
+uvicorn[standard]>=0.32
+psycopg[binary]>=3.2
+psycopg-pool>=3.2
+deepagents
+langchain-anthropic
+langgraph
+langgraph-checkpoint-postgres>=2.0
+pyyaml>=6.0

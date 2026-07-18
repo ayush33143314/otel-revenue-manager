@@ -1,0 +1,192 @@
+{
+ "question": "Portfolio brief across Aug/Sep/Oct 2026 \u2014 investigate each month.",
+ "skills_loaded": [
+  "challenge-skill",
+  "block-concentration",
+  "ota-concentration"
+ ],
+ "subagents_invoked": [
+  "revenue-analyst",
+  "revenue-analyst",
+  "revenue-analyst"
+ ],
+ "tool_calls": [
+  {
+   "name": "write_todos",
+   "args": {
+    "todos": [
+     {
+      "content": "Dispatch revenue-analyst subagents for Aug, Sep, Oct 2026 (parallel)",
+      "status": "in_progress"
+     },
+     {
+      "content": "Synthesize portfolio view across all three months",
+      "status": "pending"
+     },
+     {
+      "content": "Brief GM with commercial loop per month + portfolio-level takeaways",
+      "status": "pending"
+     }
+    ]
+   }
+  },
+  {
+   "name": "task",
+   "args": {
+    "description": "Investigate August 2026 stay month",
+    "subagent_type": "revenue-analyst",
+    "_": "Investigate the stay month of August 2026 for a portfolio revenue review. Today's date is 2026-07-18.\n\nDo the following:\n1. Pull the OTB summary for August 2026 (get_otb_summary, default posted/non-cancelled) \u2014 room nights, reservation count, room revenue, total revenue.\n2. Pull the STLY comparison \u2014 August 2025 actuals (same tool) \u2014 to benchmark pace/level (label explicitly as last year's actuals, not \"on the books\").\n3. Pull segment mix (get_segment_mix) for August 2026 to diagnose what's driving the month \u2014 top segments/macro groups by revenue and room-night share, note OTA share_of_revenue if relevant using the ota-concentration thresholds logic.\n4. Pull block vs transient mix (get_block_vs_transient_mix) for August 2026 \u2014 block_share_of_revenue, top companies, top3_company_revenue_share \u2014 flag concentration/wash risk per block-concentration skill thresholds if you know them (or use judgment: >30% block share of revenue or >40% top-3 company concentration is a flag).\n5. Pull recent pickup (get_pickup_delta) for a sensible recent booking window (e.g. last 30 days, future_stay_from = 2026-08-01) to assess current booking momentum for the month.\n\nReturn a single structured report with:\n- The core numbers (room nights, reservations, room revenue, total revenue) for August 2026 vs August 2025 STLY, with % deltas.\n- Segment/channel mix highlights (what's driving the month, any OTA or macro-group concentration).\n- Block/company concentration read and wash-risk flag if applicable.\n- Recent pickup signal (strong/weak, and vs what).\n- A clear commercial verdict: is August 2026 tracking healthy, soft, or at-risk, and why, with a recommended lever (rate action, channel shift, block policy) if relevant.\n\nDo not use the pace-vs-last-year forecasting skill (no get_as_of_otb) \u2014 that is reserved for the chair. Stick to get_otb_summary, get_segment_mix, get_block_vs_transient_mix, get_pickup_delta."
+   }
+  },
+  {
+   "name": "task",
+   "args": {
+    "description": "Investigate September 2026 stay month",
+    "subagent_type": "revenue-analyst",
+    "_": "Investigate the stay month of September 2026 for a portfolio revenue review. Today's date is 2026-07-18.\n\nDo the following:\n1. Pull the OTB summary for September 2026 (get_otb_summary, default posted/non-cancelled) \u2014 room nights, reservation count, room revenue, total revenue.\n2. Pull the STLY comparison \u2014 September 2025 actuals (same tool) \u2014 to benchmark pace/level (label explicitly as last year's actuals, not \"on the books\").\n3. Pull segment mix (get_segment_mix) for September 2026 to diagnose what's driving the month \u2014 top segments/macro groups by revenue and room-night share, note OTA share_of_revenue if relevant using the ota-concentration thresholds logic.\n4. Pull block vs transient mix (get_block_vs_transient_mix) for September 2026 \u2014 block_share_of_revenue, top companies, top3_company_revenue_share \u2014 flag concentration/wash risk per block-concentration skill thresholds if you know them (or use judgment: >30% block share of revenue or >40% top-3 company concentration is a flag).\n5. Pull recent pickup (get_pickup_delta) for a sensible recent booking window (e.g. last 30 days, future_stay_from = 2026-09-01) to assess current booking momentum for the month.\n\nReturn a single structured report with:\n- The core numbers (room nights, reservations, room revenue, total revenue) for September 2026 vs September 2025 STLY, with % deltas.\n- Segment/channel mix highlights (what's driving the month, any OTA or macro-group concentration).\n- Block/company concentration read and wash-risk flag if applicable.\n- Recent pickup signal (strong/weak, and vs what).\n- A clear commercial verdict: is September 2026 tracking healthy, soft, or at-risk, and why, with a recommended lever (rate action, channel shift, block policy) if relevant.\n\nDo not use the pace-vs-last-year forecasting skill (no get_as_of_otb) \u2014 that is reserved for the chair. Stick to get_otb_summary, get_segment_mix, get_block_vs_transient_mix, get_pickup_delta."
+   }
+  },
+  {
+   "name": "task",
+   "args": {
+    "description": "Investigate October 2026 stay month",
+    "subagent_type": "revenue-analyst",
+    "_": "Investigate the stay month of October 2026 for a portfolio revenue review. Today's date is 2026-07-18.\n\nDo the following:\n1. Pull the OTB summary for October 2026 (get_otb_summary, default posted/non-cancelled) \u2014 room nights, reservation count, room revenue, total revenue.\n2. Pull the STLY comparison \u2014 October 2025 actuals (same tool) \u2014 to benchmark pace/level (label explicitly as last year's actuals, not \"on the books\").\n3. Pull segment mix (get_segment_mix) for October 2026 to diagnose what's driving the month \u2014 top segments/macro groups by revenue and room-night share, note OTA share_of_revenue if relevant using the ota-concentration thresholds logic.\n4. Pull block vs transient mix (get_block_vs_transient_mix) for October 2026 \u2014 block_share_of_revenue, top companies, top3_company_revenue_share \u2014 flag concentration/wash risk per block-concentration skill thresholds if you know them (or use judgment: >30% block share of revenue or >40% top-3 company concentration is a flag).\n5. Pull recent pickup (get_pickup_delta) for a sensible recent booking window (e.g. last 30 days, future_stay_from = 2026-10-01) to assess current booking momentum for the month.\n\nReturn a single structured report with:\n- The core numbers (room nights, reservations, room revenue, total revenue) for October 2026 vs October 2025 STLY, with % deltas.\n- Segment/channel mix highlights (what's driving the month, any OTA or macro-group concentration).\n- Block/company concentration read and wash-risk flag if applicable.\n- Recent pickup signal (strong/weak, and vs what).\n- A clear commercial verdict: is October 2026 tracking healthy, soft, or at-risk, and why, with a recommended lever (rate action, channel shift, block policy) if relevant.\n\nDo not use the pace-vs-last-year forecasting skill (no get_as_of_otb) \u2014 that is reserved for the chair. Stick to get_otb_summary, get_segment_mix, get_block_vs_transient_mix, get_pickup_delta."
+   }
+  },
+  {
+   "name": "get_otb_summary",
+   "args": {
+    "stay_month": "2026-09"
+   }
+  },
+  {
+   "name": "get_segment_mix",
+   "args": {
+    "stay_month": "2026-09"
+   }
+  },
+  {
+   "name": "get_block_vs_transient_mix",
+   "args": {
+    "stay_month": "2026-09"
+   }
+  },
+  {
+   "name": "get_otb_summary",
+   "args": {
+    "stay_month": "2026-08"
+   }
+  },
+  {
+   "name": "get_segment_mix",
+   "args": {
+    "stay_month": "2026-08"
+   }
+  },
+  {
+   "name": "get_block_vs_transient_mix",
+   "args": {
+    "stay_month": "2026-08"
+   }
+  },
+  {
+   "name": "get_pickup_delta",
+   "args": {
+    "booking_window_days": 14,
+    "future_stay_from": "2026-08-01"
+   }
+  },
+  {
+   "name": "get_otb_summary",
+   "args": {
+    "stay_month": "2026-10"
+   }
+  },
+  {
+   "name": "get_segment_mix",
+   "args": {
+    "stay_month": "2026-10"
+   }
+  },
+  {
+   "name": "get_block_vs_transient_mix",
+   "args": {
+    "stay_month": "2026-10"
+   }
+  },
+  {
+   "name": "get_pickup_delta",
+   "args": {
+    "booking_window_days": 30,
+    "future_stay_from": "2026-10-01"
+   }
+  },
+  {
+   "name": "get_pickup_delta",
+   "args": {
+    "booking_window_days": 30,
+    "future_stay_from": "2026-09-01"
+   }
+  },
+  {
+   "name": "get_otb_summary",
+   "args": {
+    "stay_month": "2025-08"
+   }
+  },
+  {
+   "name": "get_otb_summary",
+   "args": {
+    "stay_month": "2025-09"
+   }
+  },
+  {
+   "name": "get_otb_summary",
+   "args": {
+    "stay_month": "2025-10"
+   }
+  },
+  {
+   "name": "get_otb_summary",
+   "args": {
+    "stay_month": "2026-08"
+   }
+  },
+  {
+   "name": "get_otb_summary",
+   "args": {
+    "stay_month": "2026-09"
+   }
+  },
+  {
+   "name": "get_otb_summary",
+   "args": {
+    "stay_month": "2026-10"
+   }
+  },
+  {
+   "name": "write_todos",
+   "args": {
+    "todos": [
+     {
+      "content": "Dispatch revenue-analyst subagents for Aug, Sep, Oct 2026 (parallel)",
+      "status": "completed"
+     },
+     {
+      "content": "Pull STLY benchmarks (Aug/Sep/Oct 2025) myself",
+      "status": "completed"
+     },
+     {
+      "content": "Synthesize portfolio view across all three months",
+      "status": "completed"
+     },
+     {
+      "content": "Brief GM with commercial loop per month + portfolio-level takeaways",
+      "status": "completed"
+     }
+    ]
+   }
+  }
+ ]
+}
